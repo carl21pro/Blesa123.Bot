@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");
+const axios = require("axios");
 const fs = require("fs");
 
 /* ================= ADMIN ================= */
@@ -7,7 +7,7 @@ const ADMIN_ID = "100001139243627";
 /* ================= OWNER INFO ================= */
 const OWNER_INFO = {
   name: "Jero",
-  bot: "Jero.Ai.3.0",
+  bot: "Jero.Ai.2.0",
   facebook: "https://www.facebook.com/jirokeene.bundang",
   phone: "09771256938",
   gmail: "jeroAilauglaug.help.org@gmail.com"
@@ -26,11 +26,11 @@ function saveMemory() {
 /* ================= CONFIG ================= */
 module.exports.config = {
   name: "ai",
-  version: "Jero.Ai.3.0",
+  version: "Jero.Ai.2.0",
   role: 0,
   hasPrefix: false,
   aliases: ["gpt", "jero", "jeroai"],
-  description: "Jero.Ai.3.0 – Smart Messenger Assistant",
+  description: "Jero.Ai.2.0 – Smart Messenger Assistant",
   usage: "ai [question]",
   credits: "Jerobie",
   cooldown: 0
@@ -48,27 +48,6 @@ function getMode(text) {
   return "GENERAL";
 }
 
-/* ================= Gemini API Helper ================= */
-async function askAI(question) {
-  try {
-    // Delay to avoid 429
-    await new Promise(r => setTimeout(r, 1500));
-
-    const res = await fetch(
-      `https://betadash-api-swordslush-production.up.railway.app/gemini?ask=${encodeURIComponent(question)}`
-    );
-
-    if (res.status === 429) return "⚠️ AI is busy right now. Try again in a few seconds.";
-
-    const data = await res.json();
-    return data.response || "I couldn't generate a response right now.";
-
-  } catch (err) {
-    console.error("[AI ERROR]", err.message);
-    return "❌ AI is temporarily unavailable. Try again later.";
-  }
-}
-
 /* ================= MAIN ================= */
 module.exports.run = async function ({ api, event, args }) {
   const input = args.join(" ").trim();
@@ -77,7 +56,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!input) {
     return api.sendMessage(
-`🤖 ${OWNER_INFO.bot}
+`🤖 Jero.Ai.2.0
 
 Ask me anything 👇
 • General questions
@@ -128,10 +107,10 @@ Credits: Jerobie`,
     );
   }
 
-  /* ---------- TIMER ---------- */
   const mode = getMode(input);
   const filipino = isFilipino(input);
 
+  /* ---------- TIMER ---------- */
   if (mode === "TIMER") {
     const mins = parseInt(input.match(/\d+/)?.[0]);
     if (!mins) {
@@ -150,12 +129,40 @@ Credits: Jerobie`,
   memory[uid].chats++;
   saveMemory();
 
-  /* ---------- GEMINI AI ---------- */
-  api.sendMessage("🤖 Jero.Ai.3.0 is thinking...", threadID, async (_, info) => {
-    const answer = await askAI(input);
+  /* ---------- AI PROMPT ---------- */
+  const systemPrompt = `
+You are Jero.Ai.2.0, a smart and friendly Messenger AI.
 
-    api.editMessage(
-`🤖 ${OWNER_INFO.bot}
+MODE: ${mode}
+
+RULES:
+- Answer ANY type of question
+- Be clear, helpful, and respectful
+- Step-by-step for math or coding
+- Casual tone if casual, professional if serious
+- Use Filipino if the user uses Filipino
+- Safe and accurate responses
+`;
+
+  api.sendMessage("🤖 Jero.Ai.2.0 is thinking...", threadID, async (_, info) => {
+    try {
+      const { data } = await axios.get(
+        "https://urangkapolka.vercel.app/api/chatgpt4",
+        {
+          params: {
+            prompt: `${systemPrompt}\n\nUSER:\n${input}`
+          },
+          timeout: 30000
+        }
+      );
+
+      const answer =
+        data?.response ||
+        data?.answer ||
+        "I couldn't generate a response right now.";
+
+      api.editMessage(
+`🤖 Jero.Ai.2.0
 ━━━━━━━━━━━━━━━━━━
 🧠 Mode: ${mode}
 
@@ -163,7 +170,15 @@ ${answer}
 
 ━━━━━━━━━━━━━━━━━━
 © Jerobie`,
-      info.messageID
-    );
+        info.messageID
+      );
+    } catch (e) {
+      api.editMessage(
+        filipino
+          ? "❌ May problema ngayon, subukan ulit mamaya."
+          : "❌ Something went wrong. Please try again later.",
+        info.messageID
+      );
+    }
   });
 };
