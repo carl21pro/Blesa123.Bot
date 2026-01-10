@@ -1,250 +1,192 @@
-document.getElementById('agreeCheckbox').addEventListener('change', function() {
-  document.getElementById('submitButton').disabled = !this.checked;
-});
-let Commands = [{
-  'commands': []
-}, {
-  'handleEvent': []
-}];
-function showAds() {
-  var ads = [
-    ''
+/* ===============================
+   TERMS CHECK
+================================ */
+const agreeCheckbox = document.getElementById("agreeCheckbox");
+const submitButton = document.getElementById("submitButton");
 
-  ];
-  var index = Math.floor(Math.random() * ads.length);
+agreeCheckbox.addEventListener("change", () => {
+  submitButton.disabled = !agreeCheckbox.checked;
+});
+
+/* ===============================
+   COMMAND STORAGE
+================================ */
+let Commands = [
+  { commands: [] },
+  { handleEvent: [] }
+];
+
+/* ===============================
+   ADS (OPTIONAL SAFE)
+================================ */
+function showAds() {
+  const ads = [""];
+  if (!ads[0]) return;
+  const index = Math.floor(Math.random() * ads.length);
   window.location.href = ads[index];
 }
 
+/* ===============================
+   PING CHECK
+================================ */
 function measurePing() {
-  var xhr = new XMLHttpRequest();
-  var startTime, endTime;
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState === 4) {
-      endTime = Date.now();
-      var pingTime = endTime - startTime;
-      document.getElementById("ping").textContent = pingTime + " ms";
-    }
-  };
-  xhr.open("GET", location.href + "?t=" + new Date().getTime());
-  startTime = Date.now();
-  xhr.send();
+  const start = Date.now();
+  fetch(location.href + "?ping=" + start)
+    .then(() => {
+      const ping = Date.now() - start;
+      document.getElementById("ping").textContent = ping + " ms";
+    })
+    .catch(() => {
+      document.getElementById("ping").textContent = "N/A";
+    });
 }
 setInterval(measurePing, 1000);
 
+/* ===============================
+   TIME (PH)
+================================ */
 function updateTime() {
   const now = new Date();
-  const options = {
-    timeZone: 'Asia/Manila',
-    hour12: true,
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric'
-  };
-  const formattedTime = now.toLocaleString('en-US', options);
-  document.getElementById('time').textContent = formattedTime;
+  document.getElementById("time").textContent =
+    now.toLocaleString("en-US", {
+      timeZone: "Asia/Manila",
+      hour12: true,
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric"
+    });
 }
 updateTime();
 setInterval(updateTime, 1000);
+
+/* ===============================
+   SUBMIT STATE
+================================ */
 async function State() {
-  const jsonInput = document.getElementById('json-data');
-  const button = document.getElementById('submitButton');
+  const jsonInput = document.getElementById("json-data");
+
   if (!Commands[0].commands.length) {
-    return showResult('Please provide at least one valid command for execution.');
+    return showResult("❌ Please select at least one command.");
   }
+
+  let parsedState;
   try {
-    button.style.display = 'none';
-    const State = JSON.parse(jsonInput.value);
-    if (State && typeof State === 'object') {
-      const response = await fetch('/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          state: State,
-          commands: Commands,
-          prefix: document.getElementById('inputOfPrefix').value,
-          admin: document.getElementById('inputOfAdmin').value,
-        }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        jsonInput.value = '';
-        showResult(data.message);
-        showAds();
-      } else {
-        jsonInput.value = '';
-        showResult(data.message);
-        showAds();
-      }
-    } else {
-      jsonInput.value = '';
-      showResult('Invalid JSON data. Please check your input.');
-      showAds();
-    }
-  } catch (parseError) {
-    jsonInput.value = '';
-    console.error('Error parsing JSON:', parseError);
-    showResult('Error parsing JSON. Please check your input.');
+    parsedState = JSON.parse(jsonInput.value);
+  } catch {
+    return showResult("❌ Invalid JSON Appstate.");
+  }
+
+  submitButton.disabled = true;
+
+  try {
+    const res = await fetch("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        state: parsedState,
+        commands: Commands,
+        prefix: document.getElementById("inputOfPrefix").value,
+        admin: document.getElementById("inputOfAdmin").value
+      })
+    });
+
+    const data = await res.json();
+    showResult(data.message || "✅ Bot deployed successfully!");
+    jsonInput.value = "";
     showAds();
+
+  } catch (err) {
+    showResult("❌ Server error. Please try again.");
   } finally {
     setTimeout(() => {
-      button.style.display = 'block';
-    }, 4000);
+      submitButton.disabled = false;
+    }, 3000);
   }
 }
 
+/* ===============================
+   RESULT DISPLAY
+================================ */
 function showResult(message) {
-  const resultContainer = document.getElementById('result');
-  resultContainer.innerHTML = `<h5>${message}</h5>`;
-  resultContainer.style.display = 'block';
+  const result = document.getElementById("result");
+  result.innerHTML = `<h4>${message}</h4>`;
+  result.style.display = "block";
 }
+
+/* ===============================
+   LOAD COMMAND LIST
+================================ */
 async function commandList() {
   try {
-    const [listOfCommands, listOfCommandsEvent] = [document.getElementById('listOfCommands'), document.getElementById('listOfCommandsEvent')];
-    const response = await fetch('/commands');
-    const {
-      commands,
-      handleEvent,
-      aliases
-    } = await response.json();
-    [commands, handleEvent].forEach((command, i) => {
-      command.forEach((command, index) => {
-        const container = createCommand(i === 0 ? listOfCommands : listOfCommandsEvent, index + 1, command, i === 0 ? 'commands' : 'handleEvent', aliases[index] || []);
-        i === 0 ? listOfCommands.appendChild(container) : listOfCommandsEvent.appendChild(container);
-      });
+    const res = await fetch("/commands");
+    const { commands, handleEvent } = await res.json();
+
+    commands.forEach((cmd, i) => {
+      listOfCommands.appendChild(createCommand(cmd, "commands"));
     });
-  } catch (error) {
-    console.log(error);
+
+    handleEvent.forEach((evt, i) => {
+      listOfCommandsEvent.appendChild(createCommand(evt, "handleEvent"));
+    });
+
+  } catch (e) {
+    console.error("Failed to load commands", e);
   }
 }
 
-function createCommand(element, order, command, type, aliases) {
-  const container = document.createElement('div');
-  container.classList.add('form-check', 'form-switch');
-  container.onclick = toggleCheckbox;
-  const checkbox = document.createElement('input');
-  checkbox.classList.add('form-check-input', type === 'handleEvent' ? 'handleEvent' : 'commands');
-  checkbox.type = 'checkbox';
-  checkbox.role = 'switch';
-  checkbox.id = `flexSwitchCheck_${order}`;
-  const label = document.createElement('label');
-  label.classList.add('form-check-label', type === 'handleEvent' ? 'handleEvent' : 'commands');
-  label.for = `flexSwitchCheck_${order}`;
-  label.textContent = `${order}. ${command}`;
-  container.appendChild(checkbox);
-  container.appendChild(label);
-  /*
-  if (aliases.length > 0 && type !== 'handleEvent') {
-    const aliasText = document.createElement('span');
-    aliasText.classList.add('aliases');
-    aliasText.textContent = ` (${aliases.join(', ')})`;
-    label.appendChild(aliasText);
+/* ===============================
+   CREATE TOGGLE
+================================ */
+function createCommand(name, type) {
+  const wrap = document.createElement("div");
+  wrap.className = "command-item";
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+
+  const label = document.createElement("span");
+  label.textContent = name;
+
+  wrap.onclick = () => {
+    checkbox.checked = !checkbox.checked;
+    toggleCommand(name, type, checkbox.checked);
+    wrap.classList.toggle("active", checkbox.checked);
+  };
+
+  wrap.appendChild(checkbox);
+  wrap.appendChild(label);
+  return wrap;
+}
+
+/* ===============================
+   TOGGLE LOGIC
+================================ */
+function toggleCommand(name, type, isChecked) {
+  const target =
+    type === "commands" ? Commands[0].commands : Commands[1].handleEvent;
+
+  if (isChecked && !target.includes(name)) {
+    target.push(name);
+  } else if (!isChecked) {
+    const index = target.indexOf(name);
+    if (index !== -1) target.splice(index, 1);
   }
-  */
-  return container;
 }
 
-function toggleCheckbox() {
-  const box = [{
-    input: '.form-check-input.commands',
-    label: '.form-check-label.commands',
-    array: Commands[0].commands
-  }, {
-    input: '.form-check-input.handleEvent',
-    label: '.form-check-label.handleEvent',
-    array: Commands[1].handleEvent
-  }];
-  box.forEach(({
-    input,
-    label,
-    array
-  }) => {
-    const checkbox = this.querySelector(input);
-    const labelText = this.querySelector(label);
-    if (checkbox) {
-      checkbox.checked = !checkbox.checked;
-      if (checkbox.checked) {
-        labelText.classList.add('disable');
-        const command = labelText.textContent.replace(/^\d+\.\s/, '').split(" ")[0];
-        array.push(command);
-      } else {
-        labelText.classList.remove('disable');
-        const command = labelText.textContent.replace(/^\d+\.\s/, '').split(" ")[0];
-        const removeCommand = array.indexOf(command);
-        if (removeCommand !== -1) {
-          array.splice(removeCommand, 1);
-        }
-      }
-    }
-  });
-}
-
+/* ===============================
+   SELECT ALL
+================================ */
 function selectAllCommands() {
-  const box = [{
-    input: '.form-check-input.commands',
-    array: Commands[0].commands
-  }];
-  box.forEach(({
-    input,
-    array
-  }) => {
-    const checkboxes = document.querySelectorAll(input);
-    const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
-    checkboxes.forEach((checkbox) => {
-      if (allChecked) {
-        checkbox.checked = false;
-        const labelText = checkbox.nextElementSibling;
-        labelText.classList.remove('disable');
-        const command = labelText.textContent.replace(/^\d+\.\s/, '').split(" ")[0];
-        const removeCommand = array.indexOf(command);
-        if (removeCommand !== -1) {
-          array.splice(removeCommand, 1);
-        }
-      } else {
-        checkbox.checked = true;
-        const labelText = checkbox.nextElementSibling;
-        labelText.classList.add('disable');
-        const command = labelText.textContent.replace(/^\d+\.\s/, '').split(" ")[0];
-        if (!array.includes(command)) {
-          array.push(command);
-        }
-      }
-    });
-  });
+  document.querySelectorAll("#listOfCommands .command-item")
+    .forEach(item => item.click());
 }
 
 function selectAllEvents() {
-  const box = [{
-    input: '.form-check-input.handleEvent',
-    array: Commands[1].handleEvent
-  }];
-  box.forEach(({
-    input,
-    array
-  }) => {
-    const checkboxes = document.querySelectorAll(input);
-    const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
-    checkboxes.forEach((checkbox) => {
-      if (allChecked) {
-        checkbox.checked = false;
-        const labelText = checkbox.nextElementSibling;
-        labelText.classList.remove('disable');
-        const event = labelText.textContent.replace(/^\d+\.\s/, '').split(" ")[0];
-        const removeEvent = array.indexOf(event);
-        if (removeEvent !== -1) {
-          array.splice(removeEvent, 1);
-        }
-      } else {
-        checkbox.checked = true;
-        const labelText = checkbox.nextElementSibling;
-        labelText.classList.add('disable');
-        const event = labelText.textContent.replace(/^\d+\.\s/, '').split(" ")[0];
-        if (!array.includes(event)) {
-          array.push(event);
-        }
-      }
-    });
-  });
+  document.querySelectorAll("#listOfCommandsEvent .command-item")
+    .forEach(item => item.click());
 }
+
+/* ===============================
+   INIT
+================================ */
 commandList();
