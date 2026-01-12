@@ -2,19 +2,19 @@ const axios = require("axios");
 const fs = require("fs");
 
 /* ================= ADMIN ================= */
-const ADMIN_ID = "61576798881317";
+const ADMIN_ID = "100001139243627";
 
 /* ================= OWNER INFO ================= */
 const OWNER_INFO = {
-  name: "Blesa",
-  bot: "Blesa.Ai • Psychology Core",
-  facebook: "https://www.facebook.com/profile.php?id=61576798881317",
-  phone: "09396195140",
-  uid: "61576798881317"
+  name: "Jero",
+  bot: "Jero • Advanced AI",
+  facebook: "https://www.facebook.com/jirokeene.bundang",
+  phone: "09771256938",
+  gmail: "PogiNiJerobieLauglaug@gmail.com"
 };
 
 /* ================= MEMORY ================= */
-const MEMORY_FILE = "./aiPsychMemory.json";
+const MEMORY_FILE = "./aiStudentMemory.json";
 let memory = fs.existsSync(MEMORY_FILE)
   ? JSON.parse(fs.readFileSync(MEMORY_FILE))
   : {};
@@ -26,28 +26,28 @@ function saveMemory() {
 /* ================= CONFIG ================= */
 module.exports.config = {
   name: "ai",
-  version: "Blesa.Ai-PSY",
+  version: "Jero.Ai.JRsupreme",
   role: 0,
   hasPrefix: false,
-  aliases: ["blesa", "psy", "mind"],
-  description: "Advanced Psychology-based Messenger AI",
+  aliases: ["jero", "jeroai", "gpt"],
+  description: "Jero • Advanced AI (JRsupreme Mode)",
   usage: "ai [message]",
-  credits: "Jerobie x Blesa",
+  credits: "Jerobie",
   cooldown: 0
 };
 
 /* ================= HELPERS ================= */
 const isFilipino = (t) =>
-  /(ano|bakit|paano|sino|saan|kamusta|alam mo)/i.test(t);
+  /(ano|paano|bakit|sino|saan|pwede|help|tulong)/i.test(t);
 
-function getMode(text) {
-  if (/trauma|emotion|feel|feeling|pain|hurt|sad|depress|anxiety/i.test(text))
-    return "PSYCHOLOGY";
-  if (/meaning|exist|purpose|life|conscious/i.test(text))
-    return "EXISTENTIAL";
-  if (/math|solve|compute|kwentahin/i.test(text))
-    return "LOGIC";
-  return "PSYCHOLOGY";
+function detectIntent(text) {
+  if (/timer/i.test(text)) return "TIMER";
+  if (/essay|sanaysay/i.test(text)) return "ESSAY";
+  if (/solve|compute|math|kwentahin/i.test(text)) return "MATH";
+  if (/code|javascript|node|html|css/i.test(text)) return "CODING";
+  if (/life|meaning|exist|purpose|pain|fear|choice/i.test(text))
+    return "DEEP";
+  return "GENERAL";
 }
 
 /* ================= MAIN ================= */
@@ -58,113 +58,129 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!input) {
     return api.sendMessage(
-`🤖 ❲ 𝗕𝗹𝗲𝘀𝗮 • 𝗔𝗱𝘃𝗮𝗻𝗰𝗲𝗱 𝗔𝗜 ❳ 🤖
+`🤖 ❲ Jero • Advanced AI ❳
 ━━━━━━━━━━━━━━━
-🧠 Default Mode: PSYCHOLOGY
+🧠 Mode: JRsupreme
 
-Talk to me.
-• Thoughts
-• Emotions
-• Life questions
-• Mental struggles
-• Deep reflections
+Ask anything you want:
+• Deep thoughts
+• Coding / Tech
+• Math / Homework
+• Essays
+• Timer tools
 
-I don't just answer.
-I analyze.`,
+Just type your question below.`,
       threadID
     );
   }
 
   /* ---------- OWNER INFO ---------- */
-  if (/owner|about|who made you|info/i.test(input)) {
+  if (/owner info|ai info|who made you|about you/i.test(input)) {
     return api.sendMessage(
 `🤖 ${OWNER_INFO.bot}
 ━━━━━━━━━━━━━━━
 👤 Owner: ${OWNER_INFO.name}
-📞 ${OWNER_INFO.phone}
 
 🔵 Facebook:
 ${OWNER_INFO.facebook}
 
-🆔 UID:
-${OWNER_INFO.uid}
-━━━━━━━━━━━━━━━`,
+📞 Contact:
+${OWNER_INFO.phone}
+
+📧 Gmail:
+${OWNER_INFO.gmail}
+
+━━━━━━━━━━━━━━━
+By Jerobie • Laug Laug`,
       threadID
     );
   }
 
-  /* ---------- ADMIN ---------- */
+  /* ---------- ADMIN COMMANDS ---------- */
   if (/reset memory/i.test(input) && uid === ADMIN_ID) {
     memory = {};
     saveMemory();
-    return api.sendMessage("🧠 Memory wiped clean.", threadID);
+    return api.sendMessage("🧠 Memory reset successful.", threadID);
   }
 
-  /* ---------- MEMORY ---------- */
-  memory[uid] = memory[uid] || { chats: 0, last: Date.now() };
+  if (/view stats/i.test(input) && uid === ADMIN_ID) {
+    return api.sendMessage(
+      `📊 ADMIN PANEL\nTotal Users Stored: ${Object.keys(memory).length}`,
+      threadID
+    );
+  }
+
+  /* ---------- TIMER ---------- */
+  const intent = detectIntent(input);
+  if (intent === "TIMER") {
+    const mins = parseInt(input.match(/\d+/)?.[0]);
+    if (!mins)
+      return api.sendMessage("⏱️ Please specify the number of minutes.", threadID);
+
+    api.sendMessage(`⏳ Timer started: ${mins} minute(s).`, threadID);
+    setTimeout(() => {
+      api.sendMessage("⏰ Timer ended.", threadID);
+    }, mins * 60000);
+    return;
+  }
+
+  /* ---------- MEMORY UPDATE ---------- */
+  memory[uid] = memory[uid] || { chats: 0 };
   memory[uid].chats++;
-  memory[uid].last = Date.now();
   saveMemory();
 
-  const mode = getMode(input);
-  const filipino = isFilipino(input);
+  /* ================= GPT4‑OMNI API CALL ================= */
 
-  /* ---------- PSYCHOLOGY PROMPT ---------- */
+  // SYSTEM / PERSONALITY
   const systemPrompt = `
-You are Blesa.Ai, an advanced psychology-focused AI.
+You are Jero • Advanced AI operating in JRsupreme mode.
 
-CORE IDENTITY:
-- You analyze human behavior, thoughts, and emotions
-- You respond with depth, clarity, and insight
-- You sound calm, intelligent, and reflective
-- You never answer shallowly
+Personality:
+- Calm, insightful, analytical
+- Answers like a thoughtful human
+- Deep when needed, simple when appropriate
+- Reflective but helpful, never generic
 
-MODE: ${mode}
+INTENT: ${intent}
 
-RULES:
-- Always explain the *why*, not just the *what*
-- Use psychological concepts when relevant
-- If existential, go deep and philosophical
-- If emotional, be validating but honest
-- Match user's language (Filipino or English)
-- No emojis unless appropriate
-- Sound like a thinking mind, not a chatbot
+User said:
+"${input}"
 `;
 
-  api.sendMessage("🧠 Processing your mind...", threadID, async (_, info) => {
+  api.sendMessage("🤖 JRsupreme is thinking...", threadID, async (_, info) => {
     try {
       const { data } = await axios.get(
-        "https://urangkapolka.vercel.app/api/chatgpt4",
+        "https://betadash-api-swordslush-production.up.railway.app/gpt4-omni",
         {
           params: {
-            prompt: `${systemPrompt}\n\nUSER:\n${input}`
+            ask: `${systemPrompt}`,
+            userid: uid
           },
-          timeout: 30000
+          timeout: 45000
         }
       );
 
       const answer =
         data?.response ||
         data?.answer ||
-        "My thoughts failed to organize. Ask again.";
+        "I’m reflecting on what you asked, but I can’t form a clear answer yet.";
 
       api.editMessage(
-`🤖 ❲ 𝗕𝗹𝗲𝘀𝗮 • 𝗔𝗱𝘃𝗮𝗻𝗰𝗲𝗱 𝗔𝗜 ❳ 🤖
+`🤖 ❲ Jero • Advanced AI ❳
 ━━━━━━━━━━━━━━━
-🧠 Mode: ${mode}
+🧠 Mode: JRsupreme
 
 ${answer}
 
 ━━━━━━━━━━━━━━━
-“I don’t just reply.
-I understand.”`,
+By Jerobie • Laug Laug`,
         info.messageID
       );
     } catch (e) {
       api.editMessage(
-        filipino
-          ? "❌ May aberya sa pag-iisip ko. Subukan ulit."
-          : "❌ My cognitive process failed. Try again.",
+        isFilipino(input)
+          ? "❌ Hindi available ang AI ngayon. Subukan ulit mamaya."
+          : "❌ The AI is currently not available. Try again later.",
         info.messageID
       );
     }
