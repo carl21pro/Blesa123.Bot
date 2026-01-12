@@ -1,73 +1,57 @@
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
 
+/* ================= CONFIG ================= */
 module.exports.config = {
   name: "spotify",
-  version: "1.0.0",
+  version: "1.1",
   role: 0,
-  hasPrefix: false,
-  aliases: [],
-  description: "Search and download Spotify track.",
-  usage: "spotify [song name]",
-  credits: "Vern",
-  cooldown: 5,
+  hasPrefix: true,
+  aliases: ["spt", "music"],
+  description: "Search Spotify and get song info with link",
+  usage: "spotify [song title]",
+  credits: "Jerobie",
+  cooldown: 0
 };
 
+/* ================= MAIN ================= */
 module.exports.run = async function ({ api, event, args }) {
+  const input = args.join(" ").trim();
   const threadID = event.threadID;
-  const messageID = event.messageID;
-  const senderID = event.senderID;
 
-  if (!args[0]) {
-    return api.sendMessage("❌ Please provide a search keyword.\n\nUsage: spotify [song name]", threadID, messageID);
+  if (!input) {
+    return api.sendMessage("❌ Please provide a song title. Usage: spotify [title]", threadID);
   }
 
-  const keyword = encodeURIComponent(args.join(" "));
-  const searchURL = `https://kaiz-apis.gleeze.com/api/spotify-search?q=${keyword}&apikey=8aa2f0a0-cbb9-40b8-a7d8-bba320cb9b10`;
+  api.sendMessage(`🔎 Searching Spotify for "${input}"...`, threadID, async (_, info) => {
+    try {
+      const { data } = await axios.get(
+        `https://betadash-api-swordslush-production.up.railway.app/spt?title=${encodeURIComponent(input)}`,
+        { timeout: 30000 }
+      );
 
-  await api.sendMessage("Traacking song please wait...", threadID, messageID);
+      if (!data || !data.title) {
+        return api.editMessage("❌ Song not found.", info.messageID);
+      }
 
-  try {
-    const searchRes = await axios.get(searchURL);
-    const track = searchRes.data[0]; // First result
+      // Format duration mm:ss
+      const minutes = Math.floor(data.duration / 60000);
+      const seconds = Math.floor((data.duration % 60000) / 1000);
+      const durationFormatted = `${minutes}:${seconds.toString().padStart(2, "0")}`;
 
-    if (!track || !track.trackUrl) {
-      return api.sendMessage("❌ No Spotify track found.", threadID, messageID);
+      // Fallback thumbnail
+      const thumbnail = data.thumbnail || "https://i.imgur.com/2yAfvC4.png";
+
+      const msg = `
+🎵 Title: ${data.title}
+🎤 Artist(s): ${data.artists}
+⏱ Duration: ${durationFormatted}
+🖼 Thumbnail: ${thumbnail}
+🔗 [Listen/Download Link](${data.download_url})
+`;
+
+      api.editMessage(msg, info.messageID);
+    } catch (e) {
+      api.editMessage("❌ Error searching Spotify. Try again later.", info.messageID);
     }
-
-    const downloadURL = `https://kaiz-apis.gleeze.com/api/spotify-down?url=${encodeURIComponent(track.trackUrl)}&apikey=8aa2f0a0-cbb9-40b8-a7d8-bba320cb9b10`;
-    const dlRes = await axios.get(downloadURL);
-    const { title, url, artist, thumbnail } = dlRes.data;
-
-    const imgPath = path.join(__dirname, "cache", `thumb_${senderID}.jpg`);
-    const audioPath = path.join(__dirname, "cache", `audio_${senderID}.mp3`);
-
-    // Download thumbnail
-    const imgRes = await axios.get(thumbnail, { responseType: "arraybuffer" });
-    fs.writeFileSync(imgPath, imgRes.data);
-
-    // Download audio
-    const audioRes = await axios.get(url, { responseType: "arraybuffer" });
-    fs.writeFileSync(audioPath, audioRes.data);
-
-    // Send image with details
-    api.sendMessage({
-      body: `🎵 Title: ${title}\n👤 Artist: ${artist}`,
-      attachment: fs.createReadStream(imgPath)
-    }, threadID, () => {
-      // Then send the audio
-      api.sendMessage({
-        body: "🎧 Here’s your Spotify track!",
-        attachment: fs.createReadStream(audioPath)
-      }, threadID, () => {
-        fs.unlinkSync(imgPath);
-        fs.unlinkSync(audioPath);
-      });
-    });
-
-  } catch (error) {
-    console.error("Spotify command error:", error);
-    return api.sendMessage("❌ An error occurred while processing your request.", threadID, messageID);
-  }
+  });
 };
