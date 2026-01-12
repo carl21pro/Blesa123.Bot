@@ -1,63 +1,70 @@
-const axios = require('axios');
-const path = require('path');
-const fs = require('fs-extra');
+const axios = require("axios");
 
+/* ================= CONFIG ================= */
 module.exports.config = {
-    name: "shoti",
-    version: "1.0.0",
-    role: 0,
-    description: "Fetch a random Shoti video.",
-    prefix: false,
-    premium: false,
-    credits: "Vern",
-    cooldowns: 10,
-    category: "media"
+  name: "shoti",
+  version: "1.0",
+  role: 0,
+  hasPrefix: true, // kailangan prefix
+  aliases: ["shorti", "shotvid", "svideo"],
+  description: "Fetch random short video (Shoti)",
+  usage: "shoti",
+  credits: "Jerobie",
+  cooldown: 5
 };
 
+/* ================= MAIN ================= */
 module.exports.run = async function ({ api, event }) {
-    try {
-        // Inform user about the fetching process
-        api.sendMessage("🎬 𝗙𝗲𝘁𝗰𝗵𝗶𝗻𝗴 𝗮 𝗿𝗮𝗻𝗱𝗼𝗺 𝗦𝗵𝗼𝘁𝗶 𝘃𝗶𝗱𝗲𝗼, 𝗽𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁...", event.threadID, event.messageID);
+  const threadID = event.threadID;
 
-        // API call
-        const response = await axios.get('https://shoti.fbbot.org/api/get-shoti?type=video', {
-            headers: {
-                apikey: '$shoti-54c9a5966a',
-            },
-        });
+  // show loading message
+  api.sendMessage(
+    "🎥 Fetching random Shoti video…",
+    threadID,
+    async (err, info) => {
+      if (err) return;
 
-        const data = response.data?.result;
-        if (!data || !data.content) {
-            return api.sendMessage('❌ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗲𝘁𝗰𝗵 𝗮 𝗦𝗵𝗼𝘁𝗶 𝘃𝗶𝗱𝗲𝗼. 𝗣𝗹𝗲𝗮𝘀𝗲 𝘁𝗿𝘆 𝗮𝗴𝗮𝗶𝗻 𝗹𝗮𝘁𝗲𝗿.', event.threadID, event.messageID);
+      try {
+        // call the new API
+        const { data } = await axios.get(
+          "https://golden-bony-solidstatedrive.vercel.app/video/shoti",
+          { timeout: 30000 }
+        );
+
+        // check if video link exists
+        if (!data || !data.result) {
+          return api.editMessage(
+            "❌ Failed to fetch a valid Shoti video. Try again later.",
+            info.messageID
+          );
         }
 
-        const fileName = `${event.messageID}.mp4`;
-        const filePath = path.join(__dirname, fileName);
+        // send video
+        await api.sendMessage(
+          {
+            body:
+`🤖 ❲ Jero • Video Fetch ❳
+━━━━━━━━━━━━━━━
+🎬 Here's your random short video!
 
-        const downloadResponse = await axios({
-            method: 'GET',
-            url: data.content,
-            responseType: 'stream',
-        });
+━━━━━━━━━━━━━━━
+By Jerobie • Laug Laug`,
+            attachment: await global.utils.getStreamFromURL(data.result)
+          },
+          threadID
+        );
 
-        const writer = fs.createWriteStream(filePath);
-        downloadResponse.data.pipe(writer);
+        // remove loading message
+        api.unsendMessage(info.messageID);
+      } catch (error) {
+        console.error("SHOTI ERROR:", error.message);
 
-        writer.on('finish', async () => {
-            api.sendMessage({
-                body: '🎥 𝗛𝗲𝗿𝗲’𝘀 𝘆𝗼𝘂𝗿 𝗿𝗮𝗻𝗱𝗼𝗺 𝗦𝗵𝗼𝘁𝗶 𝘃𝗶𝗱𝗲𝗼!',
-                attachment: fs.createReadStream(filePath)
-            }, event.threadID, () => {
-                fs.unlinkSync(filePath); // Cleanup
-            }, event.messageID);
-        });
-
-        writer.on('error', () => {
-            api.sendMessage('🚫 𝗘𝗿𝗿𝗼𝗿 𝗱𝗼𝘄𝗻𝗹𝗼𝗮𝗱𝗶𝗻𝗴 𝘁𝗵𝗲 𝘃𝗶𝗱𝗲𝗼. 𝗣𝗹𝗲𝗮𝘀𝗲 𝘁𝗿𝘆 𝗮𝗴𝗮𝗶𝗻.', event.threadID, event.messageID);
-        });
-
-    } catch (error) {
-        console.error('Error fetching Shoti video:', error);
-        api.sendMessage('🚫 𝗘𝗿𝗿𝗼𝗿 𝗳𝗲𝘁𝗰𝗵𝗶𝗻𝗴 𝗦𝗵𝗼𝘁𝗶 𝘃𝗶𝗱𝗲𝗼. 𝗧𝗿𝘆 𝗮𝗴𝗮𝗶𝗻 𝗹𝗮𝘁𝗲𝗿.', event.threadID, event.messageID);
+        // show error if fails
+        api.editMessage(
+          "❌ Something went wrong while fetching the Shoti video.",
+          info.messageID
+        );
+      }
     }
+  );
 };
