@@ -1,70 +1,82 @@
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
-/* ================= CONFIG ================= */
 module.exports.config = {
   name: "shoti",
-  version: "1.0",
+  version: "1.1.0",
   role: 0,
-  hasPrefix: true, // kailangan prefix
-  aliases: ["shorti", "shotvid", "svideo"],
-  description: "Fetch random short video (Shoti)",
+  hasPrefix: false,
+  aliases: ["tikshoti"],
+  description: "Send a random Shoti video",
   usage: "shoti",
-  credits: "Jerobie",
-  cooldown: 5
+  credits: "Jerobie"
 };
 
-/* ================= MAIN ================= */
 module.exports.run = async function ({ api, event }) {
   const threadID = event.threadID;
+  const videoPath = path.join(__dirname, "shoti.mp4");
 
-  // show loading message
-  api.sendMessage(
-    "🎥 Fetching random Shoti video…",
-    threadID,
-    async (err, info) => {
-      if (err) return;
+  api.sendMessage("🎥 Fetching Shoti video...", threadID, async () => {
+    try {
+      // GET API DATA
+      const { data } = await axios.get(
+        "https://golden-bony-solidstatedrive.vercel.app/video/shoti",
+        { timeout: 20000 }
+      );
 
-      try {
-        // call the new API
-        const { data } = await axios.get(
-          "https://golden-bony-solidstatedrive.vercel.app/video/shoti",
-          { timeout: 30000 }
-        );
-
-        // check if video link exists
-        if (!data || !data.result) {
-          return api.editMessage(
-            "❌ Failed to fetch a valid Shoti video. Try again later.",
-            info.messageID
-          );
-        }
-
-        // send video
-        await api.sendMessage(
-          {
-            body:
-`🤖 ❲ Jero • Video Fetch ❳
-━━━━━━━━━━━━━━━
-🎬 Here's your random short video!
-
-━━━━━━━━━━━━━━━
-By Jerobie • Laug Laug`,
-            attachment: await global.utils.getStreamFromURL(data.result)
-          },
+      if (!data || !data.link) {
+        return api.sendMessage(
+          "❌ Failed to fetch a valid Shoti video. Try again later.",
           threadID
         );
-
-        // remove loading message
-        api.unsendMessage(info.messageID);
-      } catch (error) {
-        console.error("SHOTI ERROR:", error.message);
-
-        // show error if fails
-        api.editMessage(
-          "❌ Something went wrong while fetching the Shoti video.",
-          info.messageID
-        );
       }
+
+      // DOWNLOAD VIDEO
+      const videoStream = await axios({
+        method: "GET",
+        url: data.link,
+        responseType: "stream",
+        timeout: 30000
+      });
+
+      const writer = fs.createWriteStream(videoPath);
+      videoStream.data.pipe(writer);
+
+      writer.on("finish", () => {
+        api.sendMessage(
+          {
+            body:
+`🎬 SHOTI RANDOM VIDEO
+━━━━━━━━━━━━━━━━━━━
+👤 Creator: ${data.creator || "Unknown"}
+📛 Username: ${data.username || "Unknown"}
+📝 Title: ${data.title || "No title"}
+
+━━━━━━━━━━━━━━━━━━━
+By Jerobie • Laug Laug`,
+            attachment: fs.createReadStream(videoPath)
+          },
+          threadID,
+          () => {
+            // DELETE FILE AFTER SEND
+            fs.unlinkSync(videoPath);
+          }
+        );
+      });
+
+      writer.on("error", () => {
+        api.sendMessage(
+          "❌ Failed to process the video.",
+          threadID
+        );
+      });
+
+    } catch (err) {
+      api.sendMessage(
+        "❌ Failed to fetch a valid Shoti video. Try again later.",
+        threadID
+      );
     }
-  );
+  });
 };
