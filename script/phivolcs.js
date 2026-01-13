@@ -2,12 +2,20 @@ const axios = require("axios");
 
 module.exports = {
   name: "phivolcs",
-  description: "Get latest PHIVOLCS earthquake info",
+  aliases: ["earthquake", "lindol"],
+  description: "Get latest PHIVOLCS earthquake info in the Philippines",
+  usage: "(prefix)phivolcs <location>",
+  cooldown: 5,
+
   async execute(message, args) {
     const location = args.join(" ");
 
     if (!location) {
-      return message.reply("❌ Please provide a location.\nExample: phivolcs batangas");
+      return message.reply(
+`❌ Please provide a location.
+Example:
+!phivolcs Batangas`
+      );
     }
 
     try {
@@ -18,46 +26,40 @@ module.exports = {
       const data = res.data;
 
       if (!data || !data.info || data.info.length === 0) {
-        return message.reply("⚠️ No earthquake data found for that location.");
+        return message.reply(
+`❌ No earthquake data found for "${location}".`
+        );
       }
 
-      const quake = data.info[0].details;
-
-      // PH Time
-      const phTime = new Date().toLocaleString("en-PH", {
-        timeZone: "Asia/Manila"
-      });
-
-      const response = `
-🌏 **PHIVOLCS LATEST EARTHQUAKE INFO**
-━━━━━━━━━━━━━━━━━━
-📍 **Location**
-${quake.location}
-
-📅 **Date & Time**
-${quake.dateTime}
-
-📏 **Depth**
-${quake.depth} km
-
-📊 **Magnitude**
-${quake.magnitude}
-
-🌋 **Origin**
-${quake.origin}
-
-━━━━━━━━━━━━━━━━━━
-🕒 PH Time: ${phTime}
-© Jerobie
-      `;
-
-      message.reply(response);
-
-    } catch (err) {
-      console.error("PHIVOLCS ERROR:", err.message);
+      const eq = data.info[0].details;
 
       message.reply(
-        "❌ Something went wrong while fetching PHIVOLCS data. Try again later."
+`🌏 PHIVOLCS EARTHQUAKE UPDATE
+━━━━━━━━━━━━━━━━━━━
+📍 Location:
+${eq.location}
+
+📅 Date & Time:
+${eq.dateTime}
+
+📏 Magnitude:
+${eq.magnitude}
+
+🌋 Depth:
+${eq.depth} km
+
+🧭 Origin:
+${eq.origin}
+━━━━━━━━━━━━━━━━━━━
+Source: PHIVOLCS
+By Jerobie • Laug Laug`
+      );
+
+    } catch (err) {
+      console.error(err);
+      message.reply(
+`❌ Something went wrong while fetching PHIVOLCS data.
+Try again later.`
       );
     }
   }
