@@ -1,68 +1,58 @@
-// modules/commands/screenshot.js
-
 const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
 
+/* ================= CONFIG ================= */
 module.exports.config = {
-  name: "ss",
+  name: "ss", // MAIN COMMAND
   version: "1.0.0",
-  hasPermission: 0,
-  credits: "Vern",
-  description: "Take a screenshot of a webpage via Haji‑Mix API",
-  commandCategory: "utilities",
-  usages: "screenshot [url]",
-  cooldowns: 5,
   role: 0,
-  hasPrefix: true
+  hasPrefix: true, // NEED PREFIX
+  aliases: ["screenshot", "webshot"],
+  description: "Take a screenshot of a website",
+  usage: "ss <url>",
+  credits: "Jerobie",
+  cooldown: 5
 };
 
-module.exports.run = async function({ api, event, args }) {
-  const { threadID, messageID } = event;
-  const targetUrl = args[0];
+/* ================= MAIN ================= */
+module.exports.run = async function ({ api, event, args }) {
+  const threadID = event.threadID;
+  const url = args.join(" ").trim();
 
-  if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) {
+  if (!url) {
     return api.sendMessage(
-      "❓ Please provide a valid URL starting with http:// or https://\n\nUsage: screenshot https://example.com",
-      threadID,
-      messageID
+`❌ Please provide a website URL.
+
+Example:
+ss https://google.com`,
+      threadID
     );
   }
 
-  const apiKey = "f810244328efffe65edb02e899789cdc1b5303156dd950a644a6f2637ce564f0";
-  const apiUrl = `https://haji-mix.up.railway.app/api/screenshot?url=${encodeURIComponent(targetUrl)}&api_key=${apiKey}`;
-
-  // Notify user
-  await api.sendMessage("🖥️ Generating screenshot, please wait...", threadID, messageID);
+  const apiUrl =
+    "https://betadash-api-swordslush-production.up.railway.app/screenshot?url=" +
+    encodeURIComponent(url);
 
   try {
-    const response = await axios.get(apiUrl, { responseType: "arraybuffer" });
-    const buffer = response.data;
-
-    // Ensure cache directory
-    const cacheDir = path.join(__dirname, "cache");
-    await fs.ensureDir(cacheDir);
-
-    const fileName = `screenshot_${Date.now()}.png`;
-    const filePath = path.join(cacheDir, fileName);
-    await fs.writeFile(filePath, buffer);
-
-    // Send the screenshot
-    return api.sendMessage(
-      {
-        body: `✅ Screenshot of:\n${targetUrl}`,
-        attachment: fs.createReadStream(filePath)
-      },
+    api.sendMessage(
+`📸 Taking screenshot...
+Please wait...`,
       threadID,
-      () => fs.unlinkSync(filePath),
-      messageID
+      async () => {
+        api.sendMessage(
+          {
+            attachment: await global.utils.getStreamFromURL(apiUrl)
+          },
+          threadID
+        );
+      }
     );
+
   } catch (err) {
-    console.error("[screenshot.js] API Error:", err.response?.data || err.message || err);
-    return api.sendMessage(
-      "🚫 Failed to generate screenshot. Please check the URL and try again later.",
-      threadID,
-      messageID
+    console.error("SS ERROR:", err.message);
+    api.sendMessage(
+`❌ Failed to capture screenshot.
+Try again later.`,
+      threadID
     );
   }
 };
