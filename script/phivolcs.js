@@ -1,39 +1,49 @@
 const axios = require("axios");
 
-module.exports = {
+/* ================= CONFIG ================= */
+module.exports.config = {
   name: "phivolcs",
+  version: "1.0.0",
+  role: 0,
+  hasPrefix: true,
   aliases: ["earthquake", "lindol"],
   description: "Get latest PHIVOLCS earthquake info in the Philippines",
-  usage: "(prefix)phivolcs <location>",
-  cooldown: 5,
+  usage: "phivolcs <location>",
+  credits: "Jerobie",
+  cooldown: 5
+};
 
-  async execute(message, args) {
-    const location = args.join(" ");
+/* ================= MAIN ================= */
+module.exports.run = async function ({ api, event, args }) {
+  const threadID = event.threadID;
+  const location = args.join(" ").trim();
 
-    if (!location) {
-      return message.reply(
+  if (!location) {
+    return api.sendMessage(
 `❌ Please provide a location.
+
 Example:
-!phivolcs Batangas`
+phivolcs Batangas`,
+      threadID
+    );
+  }
+
+  try {
+    const { data } = await axios.get(
+      "https://betadash-api-swordslush-production.up.railway.app/phivolcs",
+      { params: { info: location } }
+    );
+
+    if (!data?.info?.length) {
+      return api.sendMessage(
+`❌ No earthquake data found for "${location}".`,
+        threadID
       );
     }
 
-    try {
-      const res = await axios.get(
-        `https://betadash-api-swordslush-production.up.railway.app/phivolcs?info=${encodeURIComponent(location)}`
-      );
+    const eq = data.info[0].details;
 
-      const data = res.data;
-
-      if (!data || !data.info || data.info.length === 0) {
-        return message.reply(
-`❌ No earthquake data found for "${location}".`
-        );
-      }
-
-      const eq = data.info[0].details;
-
-      message.reply(
+    api.sendMessage(
 `🌏 PHIVOLCS EARTHQUAKE UPDATE
 ━━━━━━━━━━━━━━━━━━━
 📍 Location:
@@ -52,15 +62,16 @@ ${eq.depth} km
 ${eq.origin}
 ━━━━━━━━━━━━━━━━━━━
 Source: PHIVOLCS
-By Jerobie • Laug Laug`
-      );
+By Jerobie • Laug Laug`,
+      threadID
+    );
 
-    } catch (err) {
-      console.error(err);
-      message.reply(
+  } catch (err) {
+    console.error("PHIVOLCS ERROR:", err.message);
+    api.sendMessage(
 `❌ Something went wrong while fetching PHIVOLCS data.
-Try again later.`
-      );
-    }
+Try again later.`,
+      threadID
+    );
   }
 };
