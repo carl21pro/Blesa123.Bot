@@ -3,13 +3,13 @@ const fs = require("fs");
 const moment = require("moment-timezone");
 
 /* ================= ADMIN ================= */
-const ADMIN_ID = "100001139243627";
+const ADMIN_ID = "61560890733272"; // NEW MAIN ACCOUNT UID
 
 /* ================= OWNER INFO ================= */
 const OWNER_INFO = {
   name: "Jero",
   bot: "Jero • Advanced AI",
-  facebook: "https://www.facebook.com/jirokeene.bundang",
+  facebook: "https://www.facebook.com/profile.php?id=61560890733272",
   phone: "09771256938",
   gmail: "jeroAilauglaug.help.org@gmail.com"
 };
@@ -42,7 +42,6 @@ const isFilipino = (t) =>
   /(ano|paano|bakit|sino|saan|tungkol|kamusta)/i.test(t);
 
 function getMode() {
-  // naka psychology talaga pero display JRsupreme
   return "JRsupreme";
 }
 
@@ -96,7 +95,9 @@ By Jerobie • Laug Laug`,
   saveMemory();
 
   const mode = getMode();
-  const phTime = moment().tz("Asia/Manila").format("MMMM DD, YYYY • hh:mm A");
+  const phTime = moment()
+    .tz("Asia/Manila")
+    .format("MMMM DD, YYYY • hh:mm A");
 
   /* ---------- SYSTEM PROMPT ---------- */
   const systemPrompt = `
@@ -149,15 +150,12 @@ By Jerobie • Laug Laug`,
           info.messageID
         );
 
-        // console log (safe, di nag e-error)
         console.log(
           `[JRsupreme] UID:${uid} | Chats:${memory[uid].chats} | ${phTime}`
         );
       } catch (err) {
         api.editMessage(
-          filipino
-            ? "❌ May problema ngayon. Subukan ulit mamaya."
-            : "❌ Something went wrong. Please try again later.",
+          "❌ Something went wrong. Please try again later.",
           info.messageID
         );
         console.error("AI ERROR:", err.message);
