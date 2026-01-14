@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 /* ================= ADMIN ================= */
-const ADMIN_ID = "100001139243627";
+const ADMIN_ID = "61560890733272"; // NEW MAIN ACCOUNT UID
 
 /* ================= CONFIG ================= */
 module.exports.config = {
@@ -53,7 +53,6 @@ Ask anything — I respond intelligently.
 
   const mode = getMode(input);
 
-  // typing indicator
   api.sendMessage(
     "🤖 Gemini Ultra is thinking…",
     threadID,
