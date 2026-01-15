@@ -1,58 +1,57 @@
 const axios = require("axios");
 
-/* ================= CONFIG ================= */
-module.exports.config = {
-  name: "ss", // MAIN COMMAND
-  version: "1.0.0",
-  role: 0,
-  hasPrefix: true, // NEED PREFIX
-  aliases: ["screenshot", "webshot"],
-  description: "Take a screenshot of a website",
-  usage: "ss <url>",
-  credits: "Jerobie",
-  cooldown: 5
-};
+module.exports = {
+  name: "ss",
+  aliases: ["screenshot"],
+  description: "Take website screenshot",
+  usage: "!ss <url>",
+  cooldown: 5,
 
-/* ================= MAIN ================= */
-module.exports.run = async function ({ api, event, args }) {
-  const threadID = event.threadID;
-  const url = args.join(" ").trim();
+  async execute(message, args) {
+    const url = args[0];
 
-  if (!url) {
-    return api.sendMessage(
-`❌ Please provide a website URL.
-
+    if (!url) {
+      return message.reply(
+`❌ Please provide a URL.
 Example:
-ss https://google.com`,
-      threadID
-    );
-  }
+!ss https://google.com`
+      );
+    }
 
-  const apiUrl =
-    "https://betadash-api-swordslush-production.up.railway.app/screenshot?url=" +
-    encodeURIComponent(url);
-
-  try {
-    api.sendMessage(
-`📸 Taking screenshot...
-Please wait...`,
-      threadID,
-      async () => {
-        api.sendMessage(
-          {
-            attachment: await global.utils.getStreamFromURL(apiUrl)
-          },
-          threadID
-        );
-      }
+    // send loading message
+    const loadingMsg = await message.reply(
+      "📸 Taking screenshot, please wait..."
     );
 
-  } catch (err) {
-    console.error("SS ERROR:", err.message);
-    api.sendMessage(
-`❌ Failed to capture screenshot.
-Try again later.`,
-      threadID
-    );
+    try {
+      const apiUrl =
+        "https://betadash-api-swordslush-production.up.railway.app/screenshot?url=" +
+        encodeURIComponent(url);
+
+      // send screenshot image
+      await message.client.sendMessage(
+        message.threadID,
+        {
+          body: "📸 Screenshot Result",
+          attachment: await global.utils.getStreamFromURL(apiUrl)
+        },
+        message.type
+      );
+
+      // 🧹 auto delete loading message
+      setTimeout(() => {
+        message.client.unsendMessage(loadingMsg.messageID);
+      }, 500);
+
+    } catch (err) {
+      console.error(err);
+
+      message.reply("❌ Failed to take screenshot.");
+
+      // auto delete loading even on error
+      setTimeout(() => {
+        message.client.unsendMessage(loadingMsg.messageID);
+      }, 500);
+    }
   }
 };
