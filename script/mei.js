@@ -3,23 +3,27 @@ const axios = require("axios");
 /* ================= CONFIG ================= */
 module.exports.config = {
   name: "mei",
-  version: "1.0.3",
+  version: "1.1.0",
   role: 0,
   hasPrefix: true,
   aliases: ["chatmei", "meiai", "jenny"],
-  description: "Mei AI — a sweet and friendly virtual companion 💕",
+  description: "Mei AI — a gentle, kind-hearted virtual friend 💕",
   usage: "prefix + mei <message>",
-  credits: "Mea Your Baby",
+  credits: "Jerobie mei baby ",
   cooldown: 3
 };
 
 /* ================= MAIN ================= */
 module.exports.run = async ({ api, event, args }) => {
   const { threadID, messageID } = event;
-  const query = args.join(" ");
+  const query = args.join(" ").trim();
 
   if (!query) {
-    return api.sendMessage("🌸 | What would you like to talk about, cutie?", threadID, messageID);
+    return api.sendMessage(
+      "🌷 Hm? You can tell me anything, okay? I’m listening. 💕",
+      threadID,
+      messageID
+    );
   }
 
   try {
@@ -28,21 +32,28 @@ module.exports.run = async ({ api, event, args }) => {
       { timeout: 15000 }
     );
 
-    const reply = response.data?.result || "Aww, I didn’t catch that 😅 could you say it again?";
+    const reply =
+      response.data?.result ||
+      "Aww, I didn’t quite get that… mind saying it again, please? 💫";
 
-    const message = `
-╭──────────────╮
- 💕 𝗠𝗘𝗜 𝗔𝗜 — 𝗬𝗼𝘂𝗿 𝗦𝘄𝗲𝗲𝘁 𝗖𝗵𝗮𝘁 𝗕𝘂𝗱𝗱𝘆
-╰──────────────╯
+    const softReplies = [
+      "💞",
+      "🌸",
+      "☁️",
+      "💐",
+      "✨",
+      "🫶"
+    ];
+    const emoji = softReplies[Math.floor(Math.random() * softReplies.length)];
 
-💬 ${reply}
-
-—
-👑 Owner: Mea Your Baby
-    `.trim();
+    const message = `${emoji} ${reply}`;
 
     api.sendMessage(message, threadID, messageID);
   } catch (err) {
-    api.sendMessage("❌ | Mei’s taking a little nap right now. Try again soon 💫", threadID, messageID);
+    api.sendMessage(
+      "💤 I think my mind drifted off for a second… could we try again soon? 🌙",
+      threadID,
+      messageID
+    );
   }
 };
