@@ -1,40 +1,38 @@
+
 module.exports.config = {
   name: "ChessoGroup",
   version: "1.0.0",
   role: 0,
-  hasPrefix: true, // ✅ requires prefix
-  aliases: ["chessopath", "joinchess"],
-  description: "Invite everyone to join Chessopath’s official groups ♟️",
+  hasPrefix: true, // NEED PREFIX
+  aliases: ["chessopath", "joinchesso"],
+  description: "Invite people to Chessopath groups",
   usage: "prefix + ChessoGroup",
   credits: "Chessopath / Jerobie",
   cooldown: 3
 };
 
-module.exports.run = async ({ api, event }) => {
-  const { threadID, messageID } = event;
+module.exports.run = async function ({ api, event }) {
+  const threadID = event.threadID;
 
   const message = `
-♟️ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆 𝒕𝒐 𝑪𝑯𝑬𝑺𝑺𝑶𝑷𝑨𝑻𝑯 ♟️  
-Where strategy meets magic, and every move tells a story! ✨  
+♟️ Welcome to 𝑪𝑯𝑬𝑺𝑺𝑶𝑷𝑨𝑻𝑯 ♟️  
+Where strategy meets magic! ✨  
 
-We’re building a strong and friendly community of chess wizards from all over the world 🌍  
-Join us and become part of the Chessopath legacy!
+🏆 Join the Club (Chess.com)  
+👉 https://www.chess.com/club/chessopath-gtg/join  
 
-🏆 𝗝𝗼𝗶𝗻 𝗼𝘂𝗿 𝗖𝗹𝘂𝗯 (Chess.com)  
-👉 https://www.chess.com/club/chessopath-gtg/join
+📘 Join the Group (Facebook)  
+👉 https://facebook.com/groups/2186968291656839/  
 
-📘 𝗝𝗼𝗶𝗻 𝗼𝘂𝗿 𝗚𝗿𝗼𝘂𝗽 (Facebook)  
-👉 https://facebook.com/groups/2186968291656839/
+♜ Join the Team (Lichess)  
+👉 https://lichess.org/team/chessopath-gtg  
 
-♜ 𝗝𝗼𝗶𝗻 𝗼𝘂𝗿 𝗡𝗲𝘄 𝗧𝗲𝗮𝗺 (Lichess)  
-👉 https://lichess.org/team/chessopath-gtg
-
-💬 Whether you’re a beginner or a grandmaster,  
-there’s always room for one more brave mind in our magical halls of Chessopath! 🏰  
+Become part of the most magical chess community in the realm.  
+Unleash your tactics, share your wisdom, and grow with fellow wizards of the 64 squares. ⚡  
 
 —
-🧙‍♂️ 𝑶𝒘𝒏𝒆𝒓: Chessopath / Jerobie
-  `.trim();
+🧙 Owner: Chessopath | Jerobie
+`;
 
-  api.sendMessage(message, threadID, messageID);
+  api.sendMessage(message, threadID);
 };
