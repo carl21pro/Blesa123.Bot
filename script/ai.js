@@ -3,7 +3,7 @@ const fs = require("fs");
 const moment = require("moment-timezone");
 
 /* ================= ADMIN ================= */
-const ADMIN_ID = "61560890733272"; // NEW MAIN ACCOUNT UID
+const ADMIN_ID = "61560890733272"; // Main Account UID
 
 /* ================= OWNER INFO ================= */
 const OWNER_INFO = {
@@ -27,7 +27,7 @@ function saveMemory() {
 /* ================= CONFIG ================= */
 module.exports.config = {
   name: "ai",
-  version: "Jero.Ai.2.0",
+  version: "Jero.AI.2.1",
   role: 0,
   hasPrefix: false,
   aliases: ["gpt", "jero", "jeroai"],
@@ -37,12 +37,36 @@ module.exports.config = {
   cooldown: 0
 };
 
+/* ================= SETTINGS ================= */
+const AI_API_URL = "https://urangkapolka.vercel.app/api/chatgpt4";
+const MAX_HISTORY = 5;
+
 /* ================= HELPERS ================= */
-const isFilipino = (t) =>
-  /(ano|paano|bakit|sino|saan|tungkol|kamusta)/i.test(t);
+function getSystemPrompt(mode) {
+  return `
+You are Jero • Advanced AI.
+
+Mode: ${mode}
+
+Your responses must be:
+- emotionally intelligent
+- psychologically aware
+- calm but deep
+- never robotic
+- never shallow
+
+If user speaks Filipino, respond in Filipino naturally.
+If user is casual, match their tone.
+If user is serious, respond thoughtfully.
+  `.trim();
+}
 
 function getMode() {
   return "JRsupreme";
+}
+
+function formatTime() {
+  return moment().tz("Asia/Manila").format("dddd, MMMM D • h:mm A");
 }
 
 /* ================= MAIN ================= */
@@ -51,7 +75,7 @@ module.exports.run = async function ({ api, event, args }) {
   const uid = event.senderID;
   const threadID = event.threadID;
 
-  /* ---------- EMPTY INPUT ---------- */
+  /* ---------- NO INPUT ---------- */
   if (!input) {
     return api.sendMessage(
 `🤖 ❲ Jero • Advanced AI ❳
@@ -90,54 +114,39 @@ By Jerobie • Laug Laug`,
   }
 
   /* ---------- MEMORY ---------- */
-  memory[uid] = memory[uid] || { chats: 0 };
+  memory[uid] = memory[uid] || { chats: 0, history: [] };
   memory[uid].chats++;
+  memory[uid].history.push({ user: input });
+  if (memory[uid].history.length > MAX_HISTORY) memory[uid].history.shift();
   saveMemory();
 
   const mode = getMode();
-  const phTime = moment()
-    .tz("Asia/Manila")
-    .format("MMMM DD, YYYY • hh:mm A");
+  const phTime = formatTime();
 
-  /* ---------- SYSTEM PROMPT ---------- */
-  const systemPrompt = `
-You are Jero • Advanced AI.
+  const systemPrompt = getSystemPrompt(mode);
 
-You operate in JRsupreme mode.
-Your responses are:
-- psychologically aware
-- emotionally intelligent
-- calm but deep
-- never robotic
-- never shallow
+  /* ---------- RANDOM "THINKING" MESSAGE ---------- */
+  const thinkingMessages = [
+    "🤖 Thinking deeply...",
+    "🧠 Processing your thoughts...",
+    "✨ Analyzing patterns and meaning...",
+    "⚡ Gathering logical insight..."
+  ];
+  const waitMsg = thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
 
-You adapt to the user's tone.
-If casual → casual.
-If deep → philosophical.
-If Filipino → respond in Filipino.
-`;
+  api.sendMessage(waitMsg, threadID, async (_, info) => {
+    try {
+      const { data } = await axios.get(AI_API_URL, {
+        params: {
+          prompt: `${systemPrompt}\n\nCHAT HISTORY:\n${JSON.stringify(memory[uid].history)}\n\nUSER:\n${input}`
+        },
+        timeout: 30000
+      });
 
-  api.sendMessage(
-    "🤖 Processing your request...",
-    threadID,
-    async (_, info) => {
-      try {
-        const { data } = await axios.get(
-          "https://urangkapolka.vercel.app/api/chatgpt4",
-          {
-            params: {
-              prompt: `${systemPrompt}\n\nUSER:\n${input}`
-            },
-            timeout: 30000
-          }
-        );
+      const answer =
+        data?.response || data?.answer || "I couldn’t form a response right now.";
 
-        const answer =
-          data?.response ||
-          data?.answer ||
-          "I couldn’t form a response right now.";
-
-        api.editMessage(
+      api.editMessage(
 `🤖 ❲ Jero • Advanced AI ❳
 ━━━━━━━━━━━━━━━
 🧠 Mode: ${mode}
@@ -147,19 +156,17 @@ ${answer}
 ━━━━━━━━━━━━━━━
 📍 PH Time: ${phTime}
 By Jerobie • Laug Laug`,
-          info.messageID
-        );
+        info.messageID
+      );
 
-        console.log(
-          `[JRsupreme] UID:${uid} | Chats:${memory[uid].chats} | ${phTime}`
-        );
-      } catch (err) {
-        api.editMessage(
-          "❌ Something went wrong. Please try again later.",
-          info.messageID
-        );
-        console.error("AI ERROR:", err.message);
-      }
+      console.log(`[JRsupreme] UID:${uid} | Chats:${memory[uid].chats} | ${phTime}`);
+    } catch (err) {
+      let errorMessage = "❌ Sorry, something went wrong.";
+      if (err.code === "ECONNABORTED") errorMessage = "⚠️ The AI took too long to respond. Try again.";
+      if (err.response) errorMessage = `🚫 API Error: ${err.response.status}`;
+
+      api.editMessage(errorMessage, info.messageID);
+      console.error("[AI ERROR]", err.message);
     }
-  );
+  });
 };
