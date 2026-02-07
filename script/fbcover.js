@@ -2,72 +2,52 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
+/* ================= CONFIG ================= */
 module.exports.config = {
   name: "fbcover",
   version: "1.0.0",
   role: 0,
-  credits: "Vern",
-  description: "Generates a Facebook cover using provided details.",
-  hasPrefix: false,
-  aliases: ["fbcover"],
-  usage: "fbcover <name>|<subname>|<number>|<address>|<email>|<uid>|<color>",
+  hasPrefix: true,
+  aliases: ["cover", "fbc"],
+  description: "Generate a Facebook cover using canvas API by Jerobie",
+  usage: "fbcover [name]",
+  credits: "Jerobie",
   cooldown: 5
 };
 
+/* ================= MAIN ================= */
 module.exports.run = async function({ api, event, args }) {
+  const threadID = event.threadID;
+  const nameInput = args.join(" ").trim();
+
+  if (!nameInput) {
+    return api.sendMessage(
+      "⚠️ Please provide a name. Example: fbcover John Doe",
+      threadID
+    );
+  }
+
   try {
-    if (!args || args.length === 0) {
-      return api.sendMessage(
-        "Please provide all details to generate a Facebook cover.\n\nExample:\nfbcover Mark|Zuckerberg|4886|USA|zuck@gmail.com|10092939929|Blue",
-        event.threadID
-      );
-    }
-
-    const details = args.join(" ").split("|");
-
-    if (details.length < 7) {
-      return api.sendMessage(
-        "Invalid format. Make sure you use '|' to separate each field.\n\nExample:\nfbcover Mark|Zuckerberg|12345|USA|zuck@gmail.com|10092939929|Blue",
-        event.threadID
-      );
-    }
-
-    const [name, subname, sdt, address, email, uid, color] = details.map(d => encodeURIComponent(d.trim()));
-    const apiUrl = `https://api.zetsu.xyz/canvas/fbcover?name=${name}&subname=${subname}&sdt=${sdt}&address=${address}&email=${email}&uid=${uid}&color=${color}&apikey=6fbd0a144a296d257b30a752d4a178a5`;
-    const imagePath = path.join(__dirname, "fbcover.png");
-
-    api.sendMessage("Generating Facebook cover, please wait...", event.threadID);
-
-    const response = await axios({
-      url: apiUrl,
-      method: "GET",
-      responseType: "stream"
+    // Call the FB Cover API
+    const response = await axios.get("https://urangkapolka.vercel.app/api/fbcoverv1", {
+      params: { name: nameInput },
+      responseType: "arraybuffer",
+      timeout: 30000
     });
 
-    const writer = fs.createWriteStream(imagePath);
-    response.data.pipe(writer);
+    const imageBuffer = Buffer.from(response.data, "binary");
+    const filePath = path.join(__dirname, `${nameInput}_fbcover.png`);
+    fs.writeFileSync(filePath, imageBuffer);
 
-    writer.on("finish", async () => {
-      try {
-        await api.sendMessage(
-          {
-            attachment: fs.createReadStream(imagePath)
-          },
-          event.threadID
-        );
-        fs.unlinkSync(imagePath);
-      } catch (sendErr) {
-        console.error("Error sending image:", sendErr);
-        api.sendMessage("Error sending the image.", event.threadID);
-      }
-    });
+    // Send the generated cover
+    api.sendMessage(
+      { body: `📌 FB Cover for: ${nameInput}`, attachment: fs.createReadStream(filePath) },
+      threadID,
+      () => fs.unlinkSync(filePath) // Delete local file after sending
+    );
 
-    writer.on("error", (err) => {
-      console.error("Stream error:", err);
-      api.sendMessage("Error while generating the image. Try again later.", event.threadID);
-    });
-  } catch (error) {
-    console.error("General error:", error);
-    api.sendMessage("An unexpected error occurred. Please try again later.", event.threadID);
+  } catch (err) {
+    console.error("[FB Cover ERROR]", err.message);
+    api.sendMessage("❌ Failed to generate FB Cover. Try again later.", threadID);
   }
 };
