@@ -3,19 +3,20 @@ const fs = require("fs");
 const moment = require("moment-timezone");
 
 /* ================= ADMIN ================= */
-const ADMIN_ID = "61560890733272"; // Main Account UID
+const ADMIN_ID = "61560890733272";
 
 /* ================= OWNER INFO ================= */
 const OWNER_INFO = {
   name: "Jero",
-  bot: "Jero • Advanced AI",
+  bot: "Jero • Assist Vision AI",
   facebook: "https://www.facebook.com/profile.php?id=61560890733272",
   phone: "09771256938",
   gmail: "jeroAilauglaug.help.org@gmail.com"
 };
 
 /* ================= MEMORY ================= */
-const MEMORY_FILE = "./aiStudentMemory.json";
+const MEMORY_FILE = "./assistVisionMemory.json";
+
 let memory = fs.existsSync(MEMORY_FILE)
   ? JSON.parse(fs.readFileSync(MEMORY_FILE))
   : {};
@@ -26,51 +27,65 @@ function saveMemory() {
 
 /* ================= CONFIG ================= */
 module.exports.config = {
-  name: "ai",
-  version: "Jero.AI.2.1",
+  name: "ai", // ✅ pinalitan na
+  version: "AssistVision.Jero.2.0",
   role: 0,
   hasPrefix: false,
-  aliases: ["gpt", "jero", "jeroai"],
-  description: "Jero • Advanced AI (JRsupreme)",
-  usage: "ai [question]",
-  credits: "Jerobie",
+
+  // ✅ dinagdagan ng maraming may "ai"
+  aliases: [
+    "visionai",
+    "assistai",
+    "jero",
+    "gpt",
+    "ai",
+    "jeroai",
+    "vision",
+    "assistvisionai"
+  ],
+
+  description: "Assist Vision + Jero Advanced AI (Memory Enabled)",
+  usage: "ai [message]",
+  credits: "Jerobie + Assist Vision Team",
   cooldown: 0
 };
 
 /* ================= SETTINGS ================= */
 const AI_API_URL = "https://urangkapolka.vercel.app/api/chatgpt4";
-const MAX_HISTORY = 5;
+const MAX_HISTORY = 6;
 
-/* ================= HELPERS ================= */
-function getSystemPrompt(mode) {
+/* ================= SYSTEM PROMPT ================= */
+
+function getSystemPrompt() {
   return `
-You are Jero • Advanced AI.
+You are Assist Vision + Jero Advanced AI.
 
-Mode: ${mode}
-
-Your responses must be:
+Your personality:
 - emotionally intelligent
 - psychologically aware
+- smart and natural
 - calm but deep
+- friendly but intelligent
 - never robotic
 - never shallow
 
-If user speaks Filipino, respond in Filipino naturally.
-If user is casual, match their tone.
-If user is serious, respond thoughtfully.
+Language rules:
+- If user speaks Filipino → reply Filipino naturally
+- If casual tone → match casual
+- If serious → respond properly
+
+You remember recent conversation context.
   `.trim();
 }
 
-function getMode() {
-  return "JRsupreme";
-}
-
 function formatTime() {
-  return moment().tz("Asia/Manila").format("dddd, MMMM D • h:mm A");
+  return moment().tz("Asia/Manila").format("MMM D YYYY • h:mm A");
 }
 
 /* ================= MAIN ================= */
+
 module.exports.run = async function ({ api, event, args }) {
+
   const input = args.join(" ").trim();
   const uid = event.senderID;
   const threadID = event.threadID;
@@ -78,15 +93,11 @@ module.exports.run = async function ({ api, event, args }) {
   /* ---------- NO INPUT ---------- */
   if (!input) {
     return api.sendMessage(
-`🤖 ❲ Jero • Advanced AI ❳
+`🤖 Assist Vision • Jero AI
 ━━━━━━━━━━━━━━━
-🧠 Mode: JRsupreme
-
-Type anything.
-I analyze patterns, intent, and meaning — not just words.
-
-━━━━━━━━━━━━━━━
-By Jerobie • Laug Laug`,
+Talk to me.
+I remember context and analyze meaning — not just words.
+━━━━━━━━━━━━━━━`,
       threadID
     );
   }
@@ -94,7 +105,7 @@ By Jerobie • Laug Laug`,
   /* ---------- OWNER INFO ---------- */
   if (/owner|developer|who made you|ai info/i.test(input)) {
     return api.sendMessage(
-`🤖 ❲ Jero • Advanced AI ❳
+`🤖 Assist Vision • Jero AI
 ━━━━━━━━━━━━━━━
 👤 Owner: ${OWNER_INFO.name}
 
@@ -106,67 +117,90 @@ ${OWNER_INFO.phone}
 
 📧 Gmail:
 ${OWNER_INFO.gmail}
-
-━━━━━━━━━━━━━━━
-By Jerobie • Laug Laug`,
+━━━━━━━━━━━━━━━`,
       threadID
     );
   }
 
-  /* ---------- MEMORY ---------- */
-  memory[uid] = memory[uid] || { chats: 0, history: [] };
+  /* ---------- MEMORY INIT ---------- */
+  memory[uid] = memory[uid] || {
+    chats: 0,
+    history: []
+  };
+
   memory[uid].chats++;
   memory[uid].history.push({ user: input });
-  if (memory[uid].history.length > MAX_HISTORY) memory[uid].history.shift();
+
+  if (memory[uid].history.length > MAX_HISTORY)
+    memory[uid].history.shift();
+
   saveMemory();
 
-  const mode = getMode();
   const phTime = formatTime();
+  const systemPrompt = getSystemPrompt();
 
-  const systemPrompt = getSystemPrompt(mode);
-
-  /* ---------- RANDOM "THINKING" MESSAGE ---------- */
+  /* ---------- THINKING MESSAGE ---------- */
   const thinkingMessages = [
-    "🤖 Thinking deeply...",
-    "🧠 Processing your thoughts...",
-    "✨ Analyzing patterns and meaning...",
-    "⚡ Gathering logical insight..."
+    "🧠 Thinking...",
+    "⚡ Processing...",
+    "✨ Analyzing context...",
+    "🤖 Building response...",
+    "🌌 Reading intent patterns..."
   ];
-  const waitMsg = thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
+
+  const waitMsg =
+    thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
 
   api.sendMessage(waitMsg, threadID, async (_, info) => {
+
     try {
+
       const { data } = await axios.get(AI_API_URL, {
         params: {
-          prompt: `${systemPrompt}\n\nCHAT HISTORY:\n${JSON.stringify(memory[uid].history)}\n\nUSER:\n${input}`
+          prompt: `${systemPrompt}
+
+CHAT HISTORY:
+${JSON.stringify(memory[uid].history)}
+
+USER:
+${input}`
         },
         timeout: 30000
       });
 
       const answer =
-        data?.response || data?.answer || "I couldn’t form a response right now.";
+        data?.response ||
+        data?.answer ||
+        "Sorry, I couldn't respond properly.";
 
       api.editMessage(
-`🤖 ❲ Jero • Advanced AI ❳
+`🤖 Assist Vision • Jero AI
 ━━━━━━━━━━━━━━━
-🧠 Mode: ${mode}
-
 ${answer}
 
 ━━━━━━━━━━━━━━━
-📍 PH Time: ${phTime}
-By Jerobie • Laug Laug`,
+📍 PH Time: ${phTime}`,
         info.messageID
       );
 
-      console.log(`[JRsupreme] UID:${uid} | Chats:${memory[uid].chats} | ${phTime}`);
+      console.log(
+        `[AssistVision-Jero] UID:${uid} | Chats:${memory[uid].chats}`
+      );
+
     } catch (err) {
-      let errorMessage = "❌ Sorry, something went wrong.";
-      if (err.code === "ECONNABORTED") errorMessage = "⚠️ The AI took too long to respond. Try again.";
-      if (err.response) errorMessage = `🚫 API Error: ${err.response.status}`;
+
+      let errorMessage = "❌ AI error occurred.";
+
+      if (err.code === "ECONNABORTED")
+        errorMessage = "⚠️ AI timeout. Try again.";
+
+      if (err.response)
+        errorMessage = `🚫 API Error: ${err.response.status}`;
 
       api.editMessage(errorMessage, info.messageID);
       console.error("[AI ERROR]", err.message);
     }
+
   });
+
 };
