@@ -6,11 +6,11 @@ const path = require("path");
 const MEMORY_FILE = "./gemini_memory.json";
 
 module.exports.config = {
-  name: "ai",
+  name: "gamini",
   version: "3.0.0-PRO",
   role: 0,
   hasPrefix: false,
-  aliases: ["gemini", "gemi", "draw", "gen"],
+  aliases: ["geminiai", "gemi", "draw", "gen"],
   description: "Ultra-Fast Gemini with Memory & Image Generation",
   usage: "[message] or [draw/gen + description]",
   credits: "Jerobie & Gemini",
